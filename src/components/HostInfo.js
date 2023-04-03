@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Log } from "../services/Log"
 import {
   Radio,
   Icon,
@@ -10,20 +11,45 @@ import {
 } from "semantic-ui-react";
 import "../stylesheets/HostInfo.css";
 
-function HostInfo() {
+function HostInfo({  onActivation, host, areas, onAreaChange, hosts, onAddLog }) {
   // This state is just to show how the dropdown component works.
   // Options have to be formatted in this way (array of objects with keys of: key, text, value)
   // Value has to match the value in the object to render the right text.
-
+  
+  const formattedAreas = areas.map(area => {return {key: area.name, text: area.name, value: area.name}})
   // IMPORTANT: But whether it should be stateful or not is entirely up to you. Change this component however you like.
-  const [options] = useState([
-    { key: "some_area", text: "Some Area", value: "some_area" },
-    { key: "another_area", text: "Another Area", value: "another_area" },
-  ]);
+  const [options] = useState(formattedAreas);
+  let value= host.area;
+  
 
-  const [value] = useState("some_area");
-
-  function handleOptionChange(e, { value }) {
+  function handleOptionChange(e) {
+   
+    let newArea = areas.find(area => area.name===e.target.innerText)
+    let hostsOfSelectedArea= hosts.filter(host => host.area === newArea.name)
+    
+    if (hostsOfSelectedArea.length < newArea.limit) {
+      
+      host.area = e.target.innerText
+      onAreaChange(host)
+      onAddLog(
+        Log.notify(
+          `${host.firstName} set in ${newArea.name}`
+        )
+      )
+    } else {
+      logError(newArea)
+    }
+    function logError () {
+      onAddLog(
+        Log.error(
+          `Too many hosts. Cannot add ${host.firstName} to ${newArea.name}`
+        )
+      )
+      
+    }
+    value = host.area
+    
+   
     // the 'value' attribute is given via Semantic's Dropdown component.
     // Put a debugger or console.log in here and see what the "value" variable is when you pass in different options.
     // See the Semantic docs for more info: https://react.semantic-ui.com/modules/dropdown/#usage-controlled
@@ -31,13 +57,29 @@ function HostInfo() {
 
   function handleRadioChange() {
     console.log("The radio button fired");
+    host.active = !host.active
+    onActivation(host)
+    if( host.active) {
+      onAddLog(
+        Log.warn(
+          `Activated ${host.firstName}`
+        )
+      )
+    } else {
+      onAddLog(
+        Log.notify(
+          `Decommissioned ${host.firstName}`
+        )
+      )
+    }
+    
   }
 
   return (
     <Grid>
       <Grid.Column width={6}>
         <Image
-          src={/* pass in the right image here */ ""}
+          src={host.imageUrl}
           floated="left"
           size="small"
           className="hostImg"
@@ -47,7 +89,7 @@ function HostInfo() {
         <Card>
           <Card.Content>
             <Card.Header>
-              {"Bob"} | {true ? <Icon name="man" /> : <Icon name="woman" />}
+              {host.firstName} | {host.gender === "Male" ? <Icon name="man" /> : <Icon name="woman" />}
               {/* Think about how the above should work to conditionally render the right First Name and the right gender Icon */}
             </Card.Header>
             <Card.Meta>
@@ -55,8 +97,8 @@ function HostInfo() {
               {/* Checked takes a boolean and determines what position the switch is in. Should it always be true? */}
               <Radio
                 onChange={handleRadioChange}
-                label={"Active"}
-                checked={true}
+                label={host.active? "Active": "Decommissioned"}
+                checked={host.active=== true}
                 slider
               />
             </Card.Meta>
